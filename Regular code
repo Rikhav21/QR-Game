@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Dino Game</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to bottom, #87CEFA, #4682B4);
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background: linear-gradient(to bottom, #8B4513, #D2B48C);
+            border: 2px solid #333;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        #score {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            font-size: 20px;
+            color: #333;
+        }
+
+        #play-again {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 10px 20px;
+            font-size: 18px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #play-again:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div id="score">Score: 0</div>
+    <canvas id="gameCanvas"></canvas>
+    <button id="play-again">Play Again</button>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const playAgainButton = document.getElementById('play-again');
+        const setCanvasDimensions = () => {
+            canvas.width = window.innerWidth;
+            canvas.height = Math.floor(window.innerHeight / 2);
+        };
+
+        window.addEventListener('resize', setCanvasDimensions);
+        setCanvasDimensions();
+        const gravity = 0.5;
+        const jumpPower = -10;
+        let obstacleSpeed = 6;
+        let score = 0;
+        let isGameOver = false;
+
+        const player = {
+            x: 50,
+            y: canvas.height - 40,
+            width: 20,
+            height: 40,
+            color: 'black',
+            velocityY: 0,
+            isJumping: false,
+            rotation: 0,
+            rotationTarget: 0
+        };
+
+        const obstacles = [];
+        const obstacleWidth = 20;
+        const obstacleHeight = 40;
+
+        function spawnObstacle() {
+            obstacles.push({
+                x: canvas.width,
+                y: canvas.height - obstacleHeight,
+                width: obstacleWidth,
+                height: obstacleHeight,
+                color: `hsl(${Math.random() * 360}, 70%, 50%)`
+            });
+        }
+
+        function updateGame() {
+            if (isGameOver) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            player.velocityY += gravity;
+            player.y += player.velocityY;
+
+            if (player.y > canvas.height - player.height) {
+                player.y = canvas.height - player.height;
+                player.isJumping = false;
+                player.rotation = player.rotationTarget;
+            }
+
+            if (player.isJumping && player.rotation < player.rotationTarget) {
+                player.rotation += Math.PI / 90;
+            }
+            ctx.save();
+            ctx.translate(player.x + player.width / 2, player.y + player.height / 2);
+            ctx.rotate(player.rotation);
+            ctx.fillStyle = player.color;
+            ctx.fillRect(-player.width / 2, -player.height / 2, player.width, player.height);
+            ctx.restore();
+            for (let i = 0; i < obstacles.length; i++) {
+                const obstacle = obstacles[i];
+                obstacle.x -= obstacleSpeed;
+                ctx.fillStyle = obstacle.color;
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                if (
+                    player.x < obstacle.x + obstacle.width &&
+                    player.x + player.width > obstacle.x &&
+                    player.y < obstacle.y + obstacle.height &&
+                    player.y + player.height > obstacle.y
+                ) {
+                    isGameOver = true;
+                    playAgainButton.style.display = 'block';
+                    return;
+                }
+                if (obstacle.x + obstacle.width < 0) {
+                    obstacles.splice(i, 1);
+                    score++;
+                    i--;
+                    if (score % 5 === 0) {
+                        obstacleSpeed += 0.5;
+                    }
+                }
+            }
+            if (Math.random() < 0.02) {
+                spawnObstacle();
+            }
+            document.getElementById('score').textContent = `Score: ${score}`;
+
+            requestAnimationFrame(updateGame);
+        }
+
+        function handleJump() {
+            if (!player.isJumping) {
+                player.velocityY = jumpPower;
+                player.isJumping = true;
+                player.rotationTarget += Math.PI / 2; 
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                handleJump();
+            }
+        });
+
+        document.addEventListener('touchstart', () => {
+            handleJump();
+        });
+
+        playAgainButton.addEventListener('click', () => {
+            score = 0;
+            obstacleSpeed = 6;
+            isGameOver = false;
+            obstacles.length = 0;
+            player.y = canvas.height - player.height;
+            player.velocityY = 0;
+            player.rotation = 0;
+            player.rotationTarget = 0;
+            playAgainButton.style.display = 'none';
+            updateGame();
+        });
+
+        updateGame();
+    </script>
+</body>
+</html>
